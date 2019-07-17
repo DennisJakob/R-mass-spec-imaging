@@ -7,7 +7,7 @@ library(Cardinal)
 file <- "datasets/MPIMM_140_QE_P_Mouse_Brain_96x55" # file name
 msiset <- readImzML(file,
                    attach.only = FALSE,
-                   as="MSImagingExperiment",
+                   as="MSImageSet",
                    resolution = 0.0005, # 0.0005 results in a bin width of 0.001 Da
                    units = "mz")
 

@@ -1,0 +1,371 @@
+# Mass calculation for predicted metabolites
+This skript makes use of different packages. *KEGGREST* is used to access the KEGG database. *RcppClassic* and *Rdisop* are used to calculate masses based on chemical formulas. *ggplot2* is used to plot a histogram of predicted masses. *purrr* is a functional programming toolkit used for data wrangling.
+
+```{r required packages}
+library(KEGGREST)
+library(RcppClassic)
+library(Rdisop)
+library(ggplot2)
+library(purrr)
+```
+
+# Calculate masses
+Masses can be predicted for different occasions. The following shows different ways of creating a metabolite list, followed by the mass calculation for each dataset.
+
+## Metabolite Mix
+Solution of different Metabolites have been measured with MALDI-MS. The following shows two different ways of creating a list of metabolites. *A* import of a csv file, *B* creating the list in R.
+
+```{r create list of MetaMix}
+# read a .csv
+MetaMix <- read.csv("MetaMix.csv",
+                    header = TRUE,
+                    sep = ",",
+                    dec = ".")
+
+# create dataframe in R
+ID <-  c("C03557", "C00318", "C00185", "C00158", "C00475", "C04022", "C02679", "C00504", "C00031", "C00092", "C00037", "C00123", "C01384", "C00392", "C00140", "C01061", "C00079", "C00093", "C05682", "C00022", "C00121", "C00178", "C00086")
+compound <- c("Aminomethylphosphonate", "Carnitine", "Cellobiose", "Citric acid" , "Cytidine", "Dimethylsulfoniopropionic acid", "Dodecanoic acid", "Folic acid", "Glucose", "Glucose-6-phosphate", "Glycine", "Leucine", "Maleic acid", "Mannitol", "N-Acetylglucosamine", "Nonanoic acid", "Phenylalanine", "Phosphoglyceric acid", "Phosphonoacetic acid", "Pyruvic acid", "Ribose", "Thymine", "Urea")
+
+MetaMix <- data.frame(ID, compound, row.names = NULL)
+MetaMix$ID <- as.character(MetaMix$ID)
+MetaMix$compound <- as.character(MetaMix$compound)
+```
+
+Data acquisition from the KEGG database. Adds KEGG ID to the dataframe.
+
+```{r query information of MetaMix from KEGG DB}
+query_MetaMix <- list()
+for (i in 1:nrow(MetaMix)){
+  query_MetaMix[i] <- keggGet(MetaMix[i,
+                                      "ID"])
+}
+```
+
+Data acquisition from the KEGG database. Adds chemical formula and molecular weight to the dataframe.
+
+```{r add information to MetaMix list}
+for (i in 1:nrow(MetaMix)) {
+  MetaMix$formula[i] <- query_MetaMix[[i]]$FORMULA
+  MetaMix$mass[i]    <- getMolecule(MetaMix$formula[i])$exactmass
+} # --> check chemical formular; no ions or polymers allowed
+colnames(MetaMix) <- c("ID",
+                       "compound",
+                       "formula",
+                       "mass")
+```
+
+Calculation of exact occuring masses based on chemical formula.
+
+```{r add charges and adducts to MetaMix list}
+MetaMix$pos_H    <- MetaMix$mass+getMolecule("H")$exactmass-0.00055
+MetaMix$pos_Na   <- MetaMix$mass+getMolecule("Na")$exactmass-0.00055
+MetaMix$pos_K    <- MetaMix$mass+getMolecule("K")$exactmass-0.00055
+MetaMix$pos_DHB  <- MetaMix$mass+(getMolecule("C7H6O4")$exactmass-getMolecule("H2O")$exactmass)+getMolecule("H")$exactmass-0.00055
+MetaMix$neg_H    <- MetaMix$mass-getMolecule("H")$exactmass+0.00055
+MetaMix$neg_Cl   <- MetaMix$mass+getMolecule("Cl")$exactmass+0.00055
+
+MetaMix[,5:ncol(MetaMix)] <- round(MetaMix[,5:ncol(MetaMix)], digit = 4)
+```
+
+## Hopanoids
+```{r create list of Hopanoids}
+# NIX metabolites
+compound <- c("NAG-1", "NAG-2", "NAG-3", "NAG-4", "NAG-5", "Putrescine", "Alanine", "Glutamine", "Aspartate", "Adenine", "Adenosine", "AMP", "ADP", "ATP", "dAMP", "dADP", "dATP", "Guanine", "Guanosine", "GMP", "GDP", "GTP", "dGMP", "dGDP", "dGTP", "Cytosine", "Cytidine", "CMP", "CDP", "CTP", "dCMP", "dCDP", "dCTP", "Thymine", "Thymidine", "TMP", "TDP", "TTP", "dTMP", "dTDP", "dTTP")
+formula <- c("C8H15NO6", "C16H28N2O11", "C24H41N3O16", "C32H54N4O21", "C40H67N5O26", "C4H12N2", "C3H7NO2", "C5H10N2O3", "C4H7NO4", "C5H5N5", "C10H13N5O4", "C10H14N5O7P", "C10H15N5O10P2", "C10H16N5O13P3", "C10H14N5O6P", "C10H15N5O9P2", "C10H16N5O12P3", "C5H5N5O", "C10H13N5O5", "C10H14N5O8P", "C10H15N5O11P2", "C10H16N5O14P3", "C10H14N5O7P", "C10H15N5O10P2", "C10H16N5O13P3", "C4H5N3O", "C9H13N3O5", "C9H14N3O8P", "C9H15N3O11P2", "C9H16N3O14P3", "C9H14N3O7P", "C9H15N3O10P2", "C9H16N3O13P3", "C5H6N2O2", "C10H14N2O5", "C10H15N2O9P", "C10H16N2O12P2", "C10H17N2O15P3", "C10H15N2O8P", "C10H16N2O11P2", "C10H17N2O14P3")
+
+
+
+ID <-  c("C08627", "C21117", "C21118", "C21119", "C21120", "C21121", "C21122", "C21123")
+compound <- c("Hopane-29-acetate", "Adenosylhopane", "Ribosylhopane", "Bacteriohopanetetrol" , "Bacteriohopanetetrol-acetylglucosamine", "Bacteriohopanetetrol-glucosamine", "Bacteriohopanetetrol cyclitol ether", "Aminobacteriohopanetriol")
+Hopanoids <- data.frame(ID, compound, row.names = NULL)
+Hopanoids$ID <- as.character(Hopanoids$ID)
+Hopanoids$compound <- as.character(Hopanoids$compound)
+```
+```{r query information of Hopanoids from KEGG DB}
+query_Hopanoids <- list()
+for (i in 1:nrow(Hopanoids)){
+  query_Hopanoids[i] <- keggGet(Hopanoids[i,
+                                      "ID"])
+}
+```
+```{r add information to Hopanoids list}
+for (i in 1:nrow(Hopanoids)) {
+  Hopanoids$formula[i] <- query_Hopanoids[[i]]$FORMULA
+  Hopanoids$mass[i]    <- getMolecule(Hopanoids$formula[i])$exactmass
+} # --> check chemical formular; no ions or polymers allowed
+colnames(Hopanoids) <- c("ID",
+                       "compound",
+                       "formula",
+                       "mass")
+```
+```{r add charges and adducts to Hopanoids list}
+Hopanoids$pos_H    <- Hopanoids$mass+getMolecule("H")$exactmass-0.00055
+Hopanoids$pos_Na   <- Hopanoids$mass+getMolecule("Na")$exactmass-0.00055
+Hopanoids$pos_K    <- Hopanoids$mass+getMolecule("K")$exactmass-0.00055
+Hopanoids$pos_DHB  <- Hopanoids$mass+getMolecule("C7H6O4")$exactmass-getMolecule("H2O")$exactmass+getMolecule("H")$exactmass-0.00055
+Hopanoids$neg_H    <- Hopanoids$mass-getMolecule("H")$exactmass+0.00055
+Hopanoids$neg_Cl   <- Hopanoids$mass+getMolecule("Cl")$exactmass+0.00055
+
+Hopanoids[,5:ncol(Hopanoids)] <- round(Hopanoids[,5:ncol(Hopanoids)], digit = 4)
+```
+
+## KEGG
+```{r list compounds of metabolic pathway}
+listDatabases()
+pathway                  <- keggList("pathway")
+map                      <- keggGet("path:ko00680")
+keggID                   <- as.data.frame(attributes(map[[1]]$COMPOUND))
+compounds                <- as.data.frame(map[[1]]$COMPOUND)
+KEGG_compounds           <- as.data.frame(c(keggID[1],
+                                            compounds[1]))
+colnames(KEGG_compounds) <- c("ID",
+                              "compound")
+```
+```{r query information of pathway from KEGG DB}
+query_KEGG_compounds <- list()
+for (i in 1:nrow(KEGG_compounds)){
+  query_KEGG_compounds[i] <- keggGet(KEGG_compounds[i,
+                                                    "ID"])
+}
+```
+```{r add information to KEGG list}
+for (i in 1:nrow(KEGG_compounds)) {
+  KEGG_compounds$formula[i] <- query_KEGG_compounds[[i]]$FORMULA
+  KEGG_compounds$mass[i]    <- getMolecule(KEGG_compounds$formula[i])$exactmass
+}
+```
+```{r add charges and adducts to KEGG list}
+KEGG_compounds$pos_H    <- KEGG_compounds$mass+getMolecule("H")$exactmass-0.00055
+KEGG_compounds$pos_Na   <- KEGG_compounds$mass+getMolecule("Na")$exactmass-0.00055
+KEGG_compounds$pos_K    <- KEGG_compounds$mass+getMolecule("K")$exactmass-0.00055
+KEGG_compounds$pos_DHB  <- KEGG_compounds$mass+getMolecule("C7H6O4")$exactmass-getMolecule("H2O")$exactmass+getMolecule("H")$exactmass-0.00055
+KEGG_compounds$neg_H    <- KEGG_compounds$mass-getMolecule("H")$exactmass+0.00055
+KEGG_compounds$neg_Cl   <- KEGG_compounds$mass+getMolecule("Cl")$exactmass+0.00055
+
+KEGG_compounds[,5:ncol(KEGG_compounds)] <- round(KEGG_compounds[,5:ncol(KEGG_compounds)], digit = 4)
+```
+
+## PathwayTools data
+### MOX
+```{r import Pathway Tools smartTables of MOX}
+MOX_compounds <- read.csv("smartTable/New_SmartTable_MOX.csv",
+                          header = TRUE,
+                          sep = ";",
+                          dec = ".",
+                          stringsAsFactors = TRUE)
+
+```
+```{r delete all lines without chemical formulas for MOX}
+MOX_compounds <- subset(MOX_compounds,
+                        MOX_compounds$KEGG != "")
+MOX_compounds <- subset(MOX_compounds,
+                        MOX_compounds$Chemical.Formula != "")
+MOX_compounds <- MOX_compounds[, c("KEGG", "Name")]
+colnames(MOX_compounds) <- c("ID",
+                             "compound")
+rownames(MOX_compounds) = NULL
+
+# if compounds cannot be found: HTTP 404 -> manual subsetting
+MOX_compounds <- rbind(MOX_compounds[1:203, ],
+                       MOX_compounds[205:417, ],
+                       MOX_compounds[419:531, ],
+                       MOX_compounds[533:534, ],
+                       MOX_compounds[536:547, ])
+```
+```{r query information of MOX from KEGG DB}
+query_MOX <- list()
+for (i in 1:nrow(MOX_compounds)){
+  query_MOX[i] <- keggGet(MOX_compounds[i,
+                                        "ID"])
+}
+```
+```{r add information to MOX list}
+for (i in 1:nrow(MOX_compounds)) {
+  MOX_compounds$formula[i] <- query_MOX[[i]]$FORMULA
+  MOX_compounds$mass[i]    <- getMolecule(MOX_compounds$formula[i])$exactmass
+} # --> check chemical formula; no ions or polymers allowed
+MOX_compounds <- subset(MOX_compounds,
+                        mass > 60)
+MOX_compounds <- subset(MOX_compounds,
+                        mass < 900)
+```
+```{r calculate and add masses and adducts for MOX}
+MOX_compounds$pos_H    <- MOX_compounds$mass+getMolecule("H")$exactmass-0.00055
+MOX_compounds$pos_Na   <- MOX_compounds$mass+getMolecule("Na")$exactmass-0.00055
+MOX_compounds$pos_K    <- MOX_compounds$mass+getMolecule("K")$exactmass-0.00055
+MOX_compounds$pos_DHB  <- MOX_compounds$mass+getMolecule("C7H6O4")$exactmass-getMolecule("H2O")$exactmass+getMolecule("H")$exactmass-0.00055
+MOX_compounds$neg_H    <- MOX_compounds$mass-getMolecule("H")$exactmass+0.00055
+MOX_compounds$neg_Cl   <- MOX_compounds$mass+getMolecule("Cl")$exactmass+0.00055
+
+MOX_compounds[,5:ncol(MOX_compounds)] <- round(MOX_compounds[,5:ncol(MOX_compounds)], digit = 4)
+```
+
+### NIX
+```{r import Pathway Tools smartTables of NIX}
+NIX_compounds <- read.csv("smartTable/New_SmartTable_NIX.csv",
+                          header = TRUE,
+                          sep = ";",
+                          dec = ".",
+                          stringsAsFactors = TRUE)
+
+```
+```{r delete all lines without chemical formulas for NIX}
+NIX_compounds <- subset(NIX_compounds,
+                        NIX_compounds$KEGG != "")
+NIX_compounds <- NIX_compounds[, c("KEGG", "Name")]
+colnames(NIX_compounds) <- c("ID",
+                             "compound")
+rownames(NIX_compounds) = NULL
+
+# if compounds cannot be found: HTTP 404 -> manual subsetting
+NIX_compounds <- rbind(NIX_compounds[1:16, ],
+                       NIX_compounds[18:197, ],
+                       NIX_compounds[199:206, ],
+                       NIX_compounds[266:289, ],
+                       NIX_compounds[304:322, ],
+                       NIX_compounds[324:381, ],
+                       NIX_compounds[383:485, ],
+                       NIX_compounds[487:581, ],
+                       NIX_compounds[583:584, ],
+                       NIX_compounds[586:596, ])
+```
+```{r query information of NIX from KEGG DB}
+query_NIX <- list()
+for (i in 1:nrow(NIX_compounds)){
+  query_NIX[i] <- keggGet(NIX_compounds[i,
+                                        "ID"])
+}
+```
+```{r add information to NIX list}
+for (i in 1:nrow(NIX_compounds)) {
+  NIX_compounds$formula[i] <- query_NIX[[i]]$FORMULA
+  NIX_compounds$mass[i]    <- getMolecule(NIX_compounds$formula[i])$exactmass
+} # --> check chemical formula; no ions or polymers allowed
+NIX_compounds <- subset(NIX_compounds,
+                        mass > 60)
+NIX_compounds <- subset(NIX_compounds,
+                        mass < 900)
+```
+```{r calculate and add masses and adducts for NIX}
+NIX_compounds$pos_H    <- NIX_compounds$mass+getMolecule("H")$exactmass-0.00055
+NIX_compounds$pos_Na   <- NIX_compounds$mass+getMolecule("Na")$exactmass-0.00055
+NIX_compounds$pos_K    <- NIX_compounds$mass+getMolecule("K")$exactmass-0.00055
+NIX_compounds$pos_DHB  <- NIX_compounds$mass+getMolecule("C7H6O4")$exactmass-getMolecule("H2O")$exactmass+getMolecule("H")$exactmass-0.00055
+NIX_compounds$neg_H    <- NIX_compounds$mass-getMolecule("H")$exactmass+0.00055
+NIX_compounds$neg_Cl   <- NIX_compounds$mass+getMolecule("Cl")$exactmass+0.00055
+
+NIX_compounds[,5:ncol(NIX_compounds)] <- round(NIX_compounds[,5:ncol(NIX_compounds)], digit = 4)
+```
+
+### WF1
+```{r import Pathway Tools smartTables of WF1}
+WF1_compounds <- read.csv("smartTable/New_SmartTable_WF1.csv",
+                          header = TRUE,
+                          sep = ";",
+                          dec = ".",
+                          stringsAsFactors = TRUE)
+```
+```{r delete all lines without chemical formulas for WF1}
+WF1_compounds <- subset(WF1_compounds,
+                        WF1_compounds$KEGG != "")
+WF1_compounds <- subset(WF1_compounds,
+                        WF1_compounds$Chemical.Formula != "")
+WF1_compounds <- WF1_compounds[, c("KEGG", "Name")]
+colnames(WF1_compounds) <- c("ID",
+                             "compound")
+rownames(WF1_compounds) = NULL
+
+# if compounds cannot be found: HTTP 404 -> manual subsetting
+WF1_compounds <- rbind(WF1_compounds[1:247, ],
+                       WF1_compounds[249:488, ],
+                       WF1_compounds[490:624, ],
+                       WF1_compounds[626:627, ],
+                       WF1_compounds[629:639, ])
+```
+```{r query information of WF1 from KEGG DB}
+query_WF1 <- list()
+for (i in 1:nrow(WF1_compounds)){
+  query_WF1[i] <- keggGet(WF1_compounds[i,
+                                        "ID"])
+}
+```
+```{r add information to WF1 list}
+for (i in 1:nrow(WF1_compounds)) {
+  WF1_compounds$formula[i] <- query_WF1[[i]]$FORMULA
+  WF1_compounds$mass[i]    <- getMolecule(WF1_compounds$formula[i])$exactmass
+}
+WF1_compounds <- subset(WF1_compounds,
+                        mass > 60)
+WF1_compounds <- subset(WF1_compounds,
+                        mass < 900)
+```
+```{r calculate and add masses and adducts for WF1}
+WF1_compounds$pos_H    <- WF1_compounds$mass+getMolecule("H")$exactmass-0.00055
+WF1_compounds$pos_Na   <- WF1_compounds$mass+getMolecule("Na")$exactmass-0.00055
+WF1_compounds$pos_K    <- WF1_compounds$mass+getMolecule("K")$exactmass-0.00055
+WF1_compounds$pos_DHB  <- WF1_compounds$mass+getMolecule("C7H6O4")$exactmass-getMolecule("H2O")$exactmass+getMolecule("H")$exactmass-0.00055
+WF1_compounds$neg_H    <- WF1_compounds$mass-getMolecule("H")$exactmass+0.00055
+WF1_compounds$neg_Cl   <- WF1_compounds$mass+getMolecule("Cl")$exactmass+0.00055
+
+WF1_compounds[,5:ncol(WF1_compounds)] <- round(WF1_compounds[,5:ncol(WF1_compounds)], digit = 4)
+```
+
+# Export predicted metabolites as .csv
+## MetaMix compounds
+```{r export MetaMix list}
+write.csv(MetaMix,
+          file = "prediction_MetaMix.csv")
+```
+
+## Hopanoids compounds
+```{r export Hopanoid list}
+write.csv(Hopanoids,
+          file = "prediction_Hopanoids.csv")
+```
+
+## KEGG compounds
+```{r export KEGG list}
+write.csv(KEGG_compounds,
+          file = "prediction_KEGG.csv")
+```
+
+## NIX compounds
+```{r export NIX list}
+write.csv(NIX_compounds,
+          file = "prediction_NIX.csv")
+```
+
+## MOX compounds
+```{r export MOX list}
+write.csv(MOX_compounds,
+          file = "prediction_MOX.csv")
+```
+
+## WF1 compounds
+```{r export WF1 list}
+write.csv(WF1_compounds,
+          file = "prediction_WF1.csv")
+```
+
+
+# combined datasets
+```{r combine datasets}
+combined_spots <- rbind(MetaMix[,1:4], WF1_compounds[,1:4])
+combined_tissue <- rbind(MOX_compounds[,1:4], KEGG_compounds[,1:4], Hopanoids[,1:4])
+combined_all <- rbind(combined_spots, combined_tissue)
+```
+
+# histogram
+```{r plotting a histogram of predicted masses}
+X <- combined_tissue[combined_tissue$mass < 1000, ]
+ggplot(X,
+       aes(x = mass)) +
+  geom_histogram(binwidth = 2) +
+  xlab('Exact Masses of Predicted Compounds') +
+  ylab('Frequency') +
+  theme(axis.text.x=element_text(size=12),
+        axis.title.x=element_text(size=15)) +
+  theme(axis.text.y=element_text(size=12),
+        axis.title.y=element_text(size=15)) 
+ggsave('KEGG_pt_FreqChart<1000.png')
+```
