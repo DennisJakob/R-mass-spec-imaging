@@ -1,23 +1,30 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=T)
+
 # Load package
-library("tictoc")
 library("Cardinal")
 
 # file name
-file <- "tmp/20190523_MS37_MetaboliteMix_Spots_60_900_SDHB_pos_A25_75um_88x70" #args[1]
+folder <- args[1] # "tmp/"
+filename <- args[2] # 20190523_MS37_MetaboliteMix_Spots_60_900_SDHB_pos_A25_75um_88x70
+resolution <- args[3] # 0.001 
+units <- args[4] # "mz"
+range <- args[5] # 50000 (describing the amount of bins that is processed at a time)
+i_threshold <- args[6] # 100 (for not normalized datasets)
 
 #-------------------------------------------------------------
 
 # Import MSi dataset (ImzML and ibd!)
-msi <- readImzML(file,
+msi <- readImzML(folder,
+                 filename,
                  attach.only = FALSE,
                  as="MSImagingExperiment",
-                 resolution = 0.001, #args [2]
-                 units = "mz") #args [3]
+                 resolution = resolution, 
+                 units = units) 
 
 # define fragmentation
 pixel       <- as.character(seq(1,ncol(msi),1))
 mz          <- as.vector(mz(msi))
-range       <- 50000 #args [4]
 
 # create range list
 range_list <- list()
@@ -34,34 +41,30 @@ for (i in 1:length(range_list)) {
 }
 
 # create minor matrices
-i_threshold <- 100 #args [5]
-
 matrix_list <- list()
-
 for (i in 1:length(mz_list)) {
   matrix_list[[i]]            <- spectra(msi)[range_list[[i]],]
   colnames(matrix_list[[i]])  <- pixel
   rownames(matrix_list[[i]])  <- mz_list[[i]]
-  matrix_list[[i]]            <- matrix_list[[i]][rowSums(matrix_list[[i]] > i_threshold) >= 1, ] # strip matrix by deleting peaks under threshold
+  matrix_list[[i]]            <- matrix_list[[i]][rowSums(matrix_list[[i]] > i_threshold) >= 1, ] # strips matrix by deleting peaks (rows) under threshold
   matrix_list[[i]]            <- t(matrix_list[[i]])
   mz_list[[i]]                <- as.numeric(colnames(matrix_list[[i]]))
   matrix_list[[i]]            <- rbind(mz_list[[i]], matrix_list[[i]])
 }
 
-tictoc::tic("fuse")
+# fuse matrices
 rm(msi, mz, range_list, mz_list)
 intensity_matrix <- do.call(cbind, matrix_list)
 rm(matrix_list)
-tictoc::toc()
 
-tictoc::toc()
 # Save data as *.csv
-tictoc::tic("writing")
 write.table(intensity_matrix,
-            file = paste(file, ".csv"), # as previous filename
+            file = paste(filename, ".csv"), # as previous filename
             row.names = TRUE,
             na = "",
             col.names = FALSE,
             sep = ",")
-tictoc::toc()
-tictoc::toc()
+
+
+
+
