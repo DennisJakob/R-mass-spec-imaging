@@ -5,16 +5,16 @@ library("Cardinal")
 tictoc::tic("total")
 tictoc::tic("import")
 # Import MSi dataset (ImzML and ibd!)
-file <- "MS9_20180924_MouseBrain_unwashed_300-1800_DHB_pos_A25_100um_96x55" # file name
+file <- "tmp/20190523_MS37_MetaboliteMix_Spots_60_900_SDHB_pos_A25_75um_88x70" # file name
 msi <- readImzML(file,
-                 attach.only = FALSE,
+                 attach.only=F,
                  as="MSImagingExperiment",
-                 resolution = 0.001, # 0.0005 results in a bin width of 0.001 Da
-                 units = "mz")
+                 resolution=0.001, # 0.0005 results in a bin width of 0.001 Da
+                 units="mz")
 
 tictoc::toc()
 
-pixel               <- as.character(seq(1, ncol(msi),1))
+pixel               <- as.character(seq(1,ncol(msi),1))
 mz                  <- as.vector(mz(msi))
 range1              <-       1:50000
 range2              <-   50001:100000
