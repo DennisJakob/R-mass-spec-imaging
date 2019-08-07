@@ -1,8 +1,11 @@
+#!/usr/bin/env Rscript
+
 # Get input filename prefix
-ImzMLfile <- "tmp/HR2MSI_mouse_urinary_bladder_S096"
-binwidth <- 0.001
-triplet <- "tmp/13_Bladder_DHB"
-matrix <- "CHCA"
+args <- commandArgs(trailingOnly=TRUE)
+ImzMLfile <- args[1]
+binwidth <- args[2] # usually 0.001
+triplet <- args[3]
+matrix <- args[4]
 
 myrows <- paste(c(triplet, "_rows.list"), collapse="")
 mycols <- paste(c(triplet, "_cols.list"), collapse="")
