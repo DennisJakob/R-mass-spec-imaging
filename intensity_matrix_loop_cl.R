@@ -1,12 +1,15 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+
 # Load package
 library("Cardinal")
 
 # file name
-ImzMLfile <- "tmp/20190523_MS37_MetaboliteMix_Spots_60_900_SDHB_pos_A25_75um_88x70"
-binwidth <- 0.001
-chunksize <- 50000 # describing the amount of bins that is processed at a time
-i_threshold <- 100 # for not normalized datasets
-outfile <- "20190523_MS37_MetaboliteMix_Spots_60_900_SDHB_pos_A25_75um_88x70"
+ImzMLfile <- args[1]
+binwidth <- args[2] # usually 0.001
+chunksize <- args[3] # 50000
+i_threshold <- args[4] # 100 for not normalized datasets
+outfile <- args[5]
 
 #-------------------------------------------------------------
 
@@ -14,8 +17,8 @@ outfile <- "20190523_MS37_MetaboliteMix_Spots_60_900_SDHB_pos_A25_75um_88x70"
 msi <- readImzML(ImzMLfile,
                  attach.only = FALSE,
                  as="MSImagingExperiment",
-                 resolution = binwidth, 
-                 units = "mz") 
+                 resolution = binwidth, # dependent on instrument setup
+                 units = "mz") # or ppm
 
 # define fragmentation
 pixel       <- as.character(seq(1,ncol(msi),1))
@@ -59,4 +62,6 @@ write.table(intensity_matrix,
             na = "",
             col.names = FALSE,
             sep = ",")
+
+
 
